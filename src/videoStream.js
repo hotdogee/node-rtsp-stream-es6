@@ -50,8 +50,9 @@ class VideoStream extends EventEmitter {
     })
   }
 
-  start() {    
+  start() {
     this.mpeg1Muxer = new Mpeg1Muxer({ url: this.url })    
+    console.log(`${this.name} ffmpeg started`)
     this.mpeg1Muxer.on('mpeg1data', (data) => { return this.emit('camdata', data) })
 
     let gettingInputData = false
@@ -77,8 +78,25 @@ class VideoStream extends EventEmitter {
         }
       }
     })
-    this.mpeg1Muxer.on('ffmpegError', (data) => { return global.process.stderr.write(`${this.name} ${data}`) })
+    // this.mpeg1Muxer.on('ffmpegError', (data) => { return global.process.stderr.write(`${this.name} ${data}`) })
+    this.mpeg1Muxer.on('exit', (code, signal) => {
+      if (code) {
+        console.log(`${this.name} ffmpeg exited code ${code}`)
+      }
+      else {
+        console.log(`${this.name} ffmpeg exited signal ${signal}`)
+      }
+    })
     return this
+  }
+  
+  stop() {
+    this.mpeg1Muxer.kill()
+  }
+  
+  restart() {
+    this.stop()
+    this.start()
   }
 }
 
