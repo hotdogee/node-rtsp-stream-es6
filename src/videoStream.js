@@ -17,8 +17,8 @@ class VideoStream extends EventEmitter {
       port: this.port,
       clientTracking: true
     })
-    server.on('connection', (socket, request) => {
-      console.log(`${this.name} ws connected (${server.clients.size} total): ${request.headers['x-real-ip']} ${request.headers['user-agent']}`) // ${request.headers['x-forwarded-for']}
+    this.server.on('connection', (socket, request) => {
+      console.log(`${this.name} ws connected (${this.server.clients.size} total): ${request.headers['x-real-ip']} ${request.headers['user-agent']}`) // ${request.headers['x-forwarded-for']}
 
       let streamHeader = new Buffer(8)
       streamHeader.write(STREAM_MAGIC_BYTES)
@@ -36,7 +36,7 @@ class VideoStream extends EventEmitter {
     this.mpeg1Muxer = new Mpeg1Muxer({ url: this.url })    
     console.log(`${this.name} ffmpeg started`)
     this.mpeg1Muxer.on('mpeg1data', (data) => {  
-      server.clients.forEach((client) => {
+      this.server.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(data)
         }
