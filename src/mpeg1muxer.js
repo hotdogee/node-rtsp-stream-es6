@@ -8,7 +8,7 @@ class Mpeg1Muxer extends EventEmitter {
     
     this.url = options.url
     
-    this.stream = child_process.spawn('ffmpeg', [, '-rtsp_transport', 'tcp', '-i', this.url, '-f', 'mpegts', '-codec:v', 'mpeg1video', '-'], {
+    this.stream = child_process.spawn('ffmpeg', ['-rtsp_transport', 'tcp', '-i', this.url, '-f', 'mpegts', '-codec:v', 'mpeg1video', '-'], {
       detached: false
     })
     
