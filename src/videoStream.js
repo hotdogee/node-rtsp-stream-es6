@@ -66,7 +66,14 @@ class VideoStream extends EventEmitter {
         }
       }
     })
-    this.mpeg1Muxer.on('ffmpegError', (data) => { return global.process.stderr.write(`${this.name} ${data}`) })
+
+    this.mpeg1Muxer.on('ffmpegError', (data) => {
+      global.process.stderr.write(`${this.name} ${data}`)
+    })
+
+    this.mpeg1Muxer.on('error', (code, signal) => {
+      this.start()
+    })
 
     this.mpeg1Muxer.on('exit', (code, signal) => {
       if (code) {
@@ -75,6 +82,7 @@ class VideoStream extends EventEmitter {
       else {
         console.log(`${this.name} ffmpeg exited signal ${signal}`)
       }
+      this.mpeg1Muxer.removeAllListeners()
     })
   }
   
@@ -83,7 +91,9 @@ class VideoStream extends EventEmitter {
   }
   
   restart() {
-    this.stop()
+    if (this.mpeg1Muxer && !this.mpeg1Muxer.killed) {// make sure process is still alive
+      this.stop()
+    }
     this.start()
   }
 }
