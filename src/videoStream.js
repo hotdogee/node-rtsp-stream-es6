@@ -27,14 +27,13 @@ class VideoStream extends EventEmitter {
       socket.send(streamHeader)
 
       socket.on('close', (code, reason) => {
-        console.log(`${this.name} ws disconnected: ${request.headers['x-real-ip']} ${request.headers['user-agent']}`)
+        console.log(`${this.name} ws disconnected (${this.server.clients.size} left): ${request.headers['x-real-ip']} ${request.headers['user-agent']}`)
       })
     })
   }
 
   start() {
-    this.mpeg1Muxer = new Mpeg1Muxer({ url: this.url })    
-    console.log(`${this.name} ffmpeg started`)
+    this.mpeg1Muxer = new Mpeg1Muxer({ url: this.url, name: this.name })    
     this.mpeg1Muxer.on('mpeg1data', (data) => {  
       this.server.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
@@ -71,30 +70,23 @@ class VideoStream extends EventEmitter {
       global.process.stderr.write(`${this.name} ${data}`)
     })
 
-    this.mpeg1Muxer.on('error', (code, signal) => {
-      this.start()
-    })
-
     this.mpeg1Muxer.on('exit', (code, signal) => {
       if (code) {
-        console.log(`${this.name} ffmpeg exited code ${code}`)
+        console.log(`${this.name} (pid: ${this.mpeg1Muxer.stream.pid}) ffmpeg exited code ${code}`)
       }
       else {
-        console.log(`${this.name} ffmpeg exited signal ${signal}`)
+        console.log(`${this.name} (pid: ${this.mpeg1Muxer.stream.pid}) ffmpeg exited signal ${signal}`)
       }
       this.mpeg1Muxer.removeAllListeners()
+      this.start()
     })
-  }
-  
-  stop() {
-    this.mpeg1Muxer.kill()
   }
   
   restart() {
+    console.log(`${this.name} (pid: ${this.mpeg1Muxer.stream.pid}) ffmpeg restarting`)
     if (this.mpeg1Muxer && !this.mpeg1Muxer.killed) {// make sure process is still alive
-      this.stop()
+      this.mpeg1Muxer.kill()
     }
-    this.start()
   }
 }
 
