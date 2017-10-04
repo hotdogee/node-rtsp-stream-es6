@@ -12,9 +12,21 @@ class Mpeg1Muxer extends EventEmitter {
       detached: false
     })
     
-    this.inputStreamStarted = true
-    this.stream.stdout.on('data', (data) => { return this.emit('mpeg1data', data) })
-    this.stream.stderr.on('data', (data) => { return this.emit('ffmpegError', data) })
+    this.stream.stdout.on('data', (chunk) => { this.emit('mpeg1data', chunk) })
+    this.stream.stderr.on('data', (chunk) => { this.emit('ffmpegError', chunk) })
+  }
+  
+  kill() {
+    this.stream.stdout.removeAllListeners('data')
+    this.stream.stderr.removeAllListeners('data')
+    this.stream.kill('SIGINT') // happy termination
+    this.stream.on('error', err => {
+      this.stream.kill('SIGKILL')
+      this.stream.removeAllListeners('error')
+    })
+    this.stream.on('exit', (code, signal) => {
+      this.emit('exit', code, signal)
+    })
   }
 }
 
