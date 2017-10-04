@@ -27,7 +27,7 @@ class VideoStream extends EventEmitter {
       socket.send(streamHeader)
 
       socket.on('close', (code, reason) => {
-        console.log(`${this.name} ws disconnected: ${code} ${reason} ${request.headers['x-real-ip']} ${request.headers['user-agent']}`)
+        console.log(`${this.name} ws disconnected: ${request.headers['x-real-ip']} ${request.headers['user-agent']}`)
       })
     })
   }
