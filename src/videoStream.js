@@ -13,14 +13,12 @@ class VideoStream extends EventEmitter {
     this.height = options.height
     this.port = options.port
     this.stream = void 0
-    this.stream2Socket()
-  }
-
-  stream2Socket() {    
-    const server = new WebSocket.Server({ port: this.port })
-    server.on('connection', (socket) => {
-
-      console.log(`New connection: ${this.name}`)
+    this.server = new WebSocket.Server({
+      port: this.port,
+      clientTracking: true
+    })
+    server.on('connection', (socket, request) => {
+      console.log(`${this.name} ws connected (${server.clients.size} total): ${request.headers['x-real-ip']} ${request.headers['user-agent']}`) // ${request.headers['x-forwarded-for']}
 
       let streamHeader = new Buffer(8)
       streamHeader.write(STREAM_MAGIC_BYTES)
@@ -28,32 +26,22 @@ class VideoStream extends EventEmitter {
       streamHeader.writeUInt16BE(this.height, 6)      
       socket.send(streamHeader)
 
-      this.on('camdata', (data) => {
-        server.clients.forEach((client) => {
-          if(client.readyState === WebSocket.OPEN) { client.send(data) }
-        })
+      socket.on('close', (code, reason) => {
+        console.log(`${this.name} ws disconnected: ${code} ${reason} ${request.headers['x-real-ip']} ${request.headers['user-agent']}`)
       })
-
-      socket.on('close', () => { console.log(`${this.name} disconnected !`) })
-    })
-  }
-
-  onSocketConnect(socket) {
-    let streamHeader = new Buffer(8)
-    streamHeader.write(STREAM_MAGIC_BYTES)
-    streamHeader.writeUInt16BE(this.width, 4)
-    streamHeader.writeUInt16BE(this.height, 6)
-    socket.send(streamHeader, { binary: true })
-    console.log(`New connection: ${this.name} - ${this.wsServer.clients.length} total`)
-    return socket.on("close", function(code, message) {
-      return console.log(`${this.name} disconnected - ${this.wsServer.clients.length} total`)
     })
   }
 
   start() {
     this.mpeg1Muxer = new Mpeg1Muxer({ url: this.url })    
     console.log(`${this.name} ffmpeg started`)
-    this.mpeg1Muxer.on('mpeg1data', (data) => { return this.emit('camdata', data) })
+    this.mpeg1Muxer.on('mpeg1data', (data) => {  
+      server.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(data)
+        }
+      })
+    })
 
     let gettingInputData = false
     let gettingOutputData = false
@@ -78,7 +66,8 @@ class VideoStream extends EventEmitter {
         }
       }
     })
-    // this.mpeg1Muxer.on('ffmpegError', (data) => { return global.process.stderr.write(`${this.name} ${data}`) })
+    this.mpeg1Muxer.on('ffmpegError', (data) => { return global.process.stderr.write(`${this.name} ${data}`) })
+
     this.mpeg1Muxer.on('exit', (code, signal) => {
       if (code) {
         console.log(`${this.name} ffmpeg exited code ${code}`)
@@ -87,7 +76,6 @@ class VideoStream extends EventEmitter {
         console.log(`${this.name} ffmpeg exited signal ${signal}`)
       }
     })
-    return this
   }
   
   stop() {
